@@ -11,7 +11,7 @@ Introdote is a global agent skill for AI coding assistants (Claude Code, Cursor,
 ### 1. Install
 
 ```bash
-git clone https://github.com/patrickreinbold/introdote.git /tmp/introdote
+git clone https://github.com/st-patrick/introdote.git /tmp/introdote
 bash /tmp/introdote/install.sh
 rm -rf /tmp/introdote
 ```
