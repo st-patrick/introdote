@@ -157,6 +157,151 @@ credential_keys:
   - VERCEL_TOKEN
 ```
 
+### Dev Environment (capabilities.yaml section)
+
+```yaml
+# Added during initial setup when user says "I want a dev environment"
+dev:
+  domain: patrickreinbold.com
+  subdomain_pattern: "{project}.patrickreinbold.com"
+  deploy:
+    provider: lima-city
+    method: ftp  # or ssh, api, rsync — whatever the host supports
+    # Agent figures out deploy method by researching the provider
+  dns:
+    provider: cloudflare
+    # Manages *.patrickreinbold.com wildcard record
+    wildcard_record_id: abc123  # tracked so it can be updated
+  database_mode: staging  # use staging/dev instances, not prod
+  stripe_mode: test       # always test keys for dev deploys
+```
+
+---
+
+## Dev Environment: "preview this"
+
+Separate from the production "finish" flow. The dev environment is for fast iteration — deploy to a subdomain of a domain you already own, instantly, with no production config.
+
+### Setup (during initial onboarding)
+
+When the agent asks about the user's setup, it should also ask:
+
+> "Do you want a dev environment for quick previews? If you have a domain, I can deploy projects to subdomains like `myproject.yourdomain.com` — instant, no custom domain needed."
+
+If yes:
+
+```
+1. USER tells agent: their domain, their hosting provider for dev
+2. AGENT looks up the hosting provider's deploy method:
+   - API deploy? (Vercel, Netlify, Cloudflare Pages) → use API
+   - SSH access? → deploy via rsync/scp
+   - FTP/SFTP? → deploy via lftp/sftp
+   - Something else? → research the provider
+3. AGENT sets up wildcard DNS:
+   - If DNS is API-managed (e.g., Cloudflare):
+     → Create a single *.domain.com CNAME/A record pointing at the dev host
+   - If DNS is not API-managed:
+     → Guide user to add the wildcard record manually (one-time)
+4. AGENT writes dev config to capabilities.yaml
+5. AGENT validates: deploy a test page to test.domain.com, confirm it loads
+```
+
+### The "preview this" Command
+
+When the user says **"preview this"**, **"dev deploy"**, or **"push to dev"**:
+
+```
+1. Determine project name from directory name (or git repo name)
+   my-cool-app/ → my-cool-app.patrickreinbold.com
+
+2. Build the project (if needed)
+   - Static HTML? → just the files
+   - React/Next.js? → npm run build
+   - API? → may need a process manager on the host
+
+3. Deploy to dev host using configured method:
+   FTP example:
+     lftp -u $DEV_FTP_USER,$DEV_FTP_PASS $DEV_FTP_HOST \
+       -e "mirror -R ./dist /htdocs/my-cool-app; quit"
+
+   SSH/rsync example:
+     rsync -avz ./dist/ $DEV_SSH_USER@$DEV_SSH_HOST:/var/www/my-cool-app/
+
+   API example (Vercel):
+     vercel deploy --name=my-cool-app --token=$VERCEL_TOKEN
+
+4. If subdomain DNS isn't wildcard:
+   → Create specific DNS record for this subdomain via API
+
+5. Report:
+   "✓ Live at https://my-cool-app.patrickreinbold.com"
+```
+
+### Dev vs Production
+
+```
+                    "preview this"              "finish"
+                    ──────────────              ────────
+Domain:             project.yourdomain.com      custom domain or root
+Deploy target:      dev host (FTP/SSH/free)     prod host
+Speed:              seconds — just push files   full pipeline
+SSL:                wildcard cert or auto        auto
+Database:           staging instance             production instance
+Payments:           Stripe test mode             Stripe live mode (if ready)
+Env vars:           dev values                   production values
+Cleanup:            can be torn down anytime     persistent
+Use case:           sharing, iteration, testing  launching to the world
+```
+
+### Subdomain Management
+
+The agent tracks active dev deploys:
+
+```yaml
+# ~/.open-your-eyes/dev-deploys.yaml
+deploys:
+  - project: my-cool-app
+    subdomain: my-cool-app.patrickreinbold.com
+    path: /htdocs/my-cool-app
+    deployed_at: 2025-01-15T10:30:00Z
+    source: /Users/you/code/my-cool-app
+
+  - project: experiment
+    subdomain: experiment.patrickreinbold.com
+    path: /htdocs/experiment
+    deployed_at: 2025-01-14T08:00:00Z
+    source: /Users/you/code/experiment
+```
+
+The user can say:
+- **"list my previews"** → show all active dev deploys
+- **"tear down experiment"** → remove deploy + DNS record
+- **"preview this as beta"** → deploy to `beta.patrickreinbold.com` instead of auto-naming
+
+### Multi-Host Dev Setups
+
+Some users may want different dev hosts for different project types:
+
+```yaml
+dev:
+  domain: patrickreinbold.com
+  targets:
+    static:
+      provider: lima-city
+      method: ftp
+      for: [html, react, vue, svelte, astro, next-static]
+    backend:
+      provider: fly-io
+      method: api
+      for: [node, go, python, docker]
+    fullstack:
+      provider: vercel
+      method: api
+      for: [next, nuxt, sveltekit]
+```
+
+The agent picks the right target based on project type detected in the scan.
+
 ---
 
 ## The Skill: "finish" / "open your eyes"

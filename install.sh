@@ -57,6 +57,10 @@ if [ -d "$HOME/.claude" ]; then
 When I say "finish", "ship it", "deploy", or "open your eyes":
 1. Read ~/.open-your-eyes/PLAYBOOK.md and follow its instructions
 2. Scan the current project, check global capabilities, fill gaps, and ship
+
+When I say "preview this", "dev deploy", or "push to dev":
+1. Read ~/.open-your-eyes/PLAYBOOK.md — follow the "preview this" section
+2. Deploy to a dev subdomain for quick iteration
 EOF
         echo "  Added skill trigger to ~/.claude/CLAUDE.md"
     else
@@ -72,7 +76,9 @@ echo ""
 echo "Done! Open Your Eyes is installed."
 echo ""
 echo "Usage: In any project, tell your AI agent:"
-echo "  \"finish\"  or  \"open your eyes\"  or  \"ship it\""
+echo "  \"finish\"       — ship to production"
+echo "  \"preview this\" — deploy to dev subdomain"
+echo "  \"open your eyes\" — initial setup"
 echo ""
 echo "First time? The agent will walk you through setting up your providers."
 echo "After that, it works automatically for every project."
