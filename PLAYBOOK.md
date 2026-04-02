@@ -20,6 +20,29 @@ Every question you ask the user is a failure to figure it out yourself.
 
 ---
 
+## RULE: MINIMAL BY DEFAULT
+
+```
+ONLY EXPAND CAPABILITIES AS-NEEDED.
+
+If the user wants to host a website, don't set up a database.
+If a contact form needs to work, use Web3Forms — not a database + API route.
+If static hosting does the job, don't suggest a full-stack platform.
+
+Match the solution to what the project ACTUALLY needs, not what's "proper."
+Just-in-time. Agile. The simplest thing that works.
+
+DON'T: "Your site needs a contact form, let's set up Supabase + an API route + email."
+DO:    "Your site needs a contact form. Web3Forms: one API key, done."
+
+DON'T: "Let me set up hosting, DNS, database, email, analytics, and error tracking."
+DO:    "Your project is a static site. You need hosting. That's it."
+
+Only escalate to databases, auth, payments, etc. when the project genuinely requires them.
+```
+
+---
+
 ## RULE: NEVER TRUST YOUR TRAINING DATA FOR API SPECS
 
 ```
