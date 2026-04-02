@@ -49,8 +49,9 @@ const typeColors: Record<string, string> = {
   subdomain: "#888",
 };
 
-function thumb(url: string) {
-  return `https://image.thum.io/get/width/600/crop/400/https://${url.replace(/^https?:\/\//, "")}`;
+function thumb(name: string) {
+  const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  return `/screenshots/${slug}.webp`;
 }
 
 function ProjectCard({ name, url, type, description, tags, itch }: {
@@ -96,7 +97,7 @@ function ProjectCard({ name, url, type, description, tags, itch }: {
         }}
       >
         <img
-          src={thumb(url)}
+          src={thumb(name)}
           alt={name}
           loading="lazy"
           style={{
