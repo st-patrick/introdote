@@ -123,6 +123,24 @@ The core insight: a full-access webhost API key (like lima-city) + an Anthropic 
 
 ---
 
+## Subproject: Local Online Marketing Domination (Schwarzwald-Baar-Kreis)
+
+Separate research project — analyze the local digital agency / online marketing landscape in the Schwarzwald-Baar-Kreis region. Goal: build a larger-than-life online presence to capture maximum local business (digital agency, web development, AI consulting, etc.).
+
+Research areas:
+- Competitive analysis: who are the digital agencies / web shops in the region?
+- Local SEO: what keywords do businesses here search for?
+- Google Maps / Google Business Profile optimization
+- Local directories (Gelbe Seiten, Das Örtliche, WLW, etc.)
+- Regional business networks and chambers of commerce (IHK Schwarzwald-Baar-Heuberg)
+- Social media presence of local competitors
+- Content strategy for local authority (blog, case studies, events)
+- Pricing landscape for web dev / digital services in the region
+
+Start this in a dedicated session: `cd ~/code && mkdir sbk-market-research`
+
+---
+
 ## Fun Ideas
 
 **"Introdote roulette"**
