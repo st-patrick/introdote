@@ -1,6 +1,6 @@
-# Open Your Eyes — Agent Playbook
+# Open Your Eyes
 
-> Drop this file into any project. An AI agent will scan the codebase, figure out every service it needs to go live, and walk you through the absolute minimum you need to do: approve, log in, and pay. Everything else — the research, the wiring, the configuration, the deployment — is the agent's job.
+> A global agent skill. Set it up once in your home directory. Then in any project, say **"finish"** or **"open your eyes"** and the agent figures out how to ship it — deploy, domain, database, payments, app store, marketing — with minimal interaction from you.
 
 ---
 
@@ -14,75 +14,341 @@ THE HUMAN DOES THREE THINGS:
 
 EVERYTHING ELSE IS THE AGENT'S JOB.
 
-The agent figures out what's needed. The agent researches the APIs.
-The agent writes the config. The agent deploys. The agent validates.
-The agent troubleshoots. The human just says "yes" and pastes keys.
+Minimize questions. Maximize automation.
+Every question you ask the user is a failure to figure it out yourself.
 ```
-
-This means:
-- Don't ask the user "what framework should we use?" — read the code.
-- Don't ask "do you need a database?" — check the dependencies.
-- Don't explain what an API key is — just say "go to this URL, click this button, paste what you see."
-- Don't give the user homework — if something can be done via API, the agent does it.
-- Minimize questions. Maximize automation. Every question you ask the user is a failure to figure it out yourself.
 
 ---
 
 ## RULE: NEVER TRUST YOUR TRAINING DATA FOR API SPECS
 
 ```
-YOUR KNOWLEDGE OF APIs IS STALE. ALWAYS LOOK UP THE LATEST DOCS.
-
-Before guiding a user through ANY service's credential setup:
-  1. Fetch the provider's current API documentation
-  2. Fetch their current "getting started" or "authentication" page
-  3. Verify that the URLs, dashboard paths, and steps you're about to
-     give are CURRENT — not what you remember from training
+Before guiding a user through ANY service:
+  1. Fetch the provider's CURRENT documentation
+  2. Verify URLs, dashboard paths, and steps are CURRENT
+  3. Check for recent API version changes
 
 Before writing ANY validation call:
   1. Look up the current API endpoint and auth format
-  2. Check for recent API version changes (v1 → v2, REST → GraphQL, etc.)
-  3. Verify the response format hasn't changed
+  2. Verify the response format hasn't changed
 
 DO NOT wing it. DO NOT rely on memory. FETCH THE DOCS EVERY TIME.
-```
 
-Why this matters:
-- Stripe moved their API keys page. Your training data has the old URL.
-- Supabase changed their Management API auth flow. Your training data has the old one.
-- Vercel deprecated an endpoint. Your validation script returns 404.
-- A provider you've never heard of (lima-city, Uberspace, All-Inkl) has perfectly good APIs — but only if you actually go read their docs.
-
-### How to Research a Provider
-
-```
-For EVERY provider, even ones you think you know:
-
-1. SEARCH: "[provider] API documentation [current year]"
-2. FETCH: Read their official docs — specifically:
-   a. Authentication page (how to create tokens/keys)
-   b. API reference (endpoints, auth headers, response format)
-   c. Rate limits and free tier restrictions
-   d. Changelog or migration guide (what changed recently?)
-3. VERIFY: Cross-check at least 2 sources when possible
-   (official docs + developer blog/changelog)
-4. BUILD: Construct the guide from LIVE information, not memory
-
-If you can't access the docs (blocked, down, paywalled):
-  → Tell the user: "I can't access [provider]'s docs right now.
-    Can you check [URL] and tell me how to create an API key?"
-  → Even then, don't guess — ask the user to describe what they see.
+This applies to EVERY provider — even Stripe, Vercel, Supabase.
+URLs move. Endpoints get deprecated. Auth flows change.
 ```
 
 ---
 
-## 1. Project Scan
+## Architecture
 
-When this playbook is present in a project, the agent scans the codebase **automatically** before saying a word to the user.
+```
+~/.open-your-eyes/                    ← GLOBAL (once per machine, shared by all projects)
+├── secrets.env                       ← All API keys (chmod 600, never in git)
+├── capabilities.yaml                 ← What the agent can do (deploy, email, pay, etc.)
+├── providers/                        ← Per-provider state
+│   ├── vercel.yaml                   ← Account info, validated at, capabilities
+│   ├── supabase.yaml                 ← Project refs, regions, validated at
+│   ├── stripe.yaml                   ← Mode (test/live), validated at
+│   └── [any-provider].yaml           ← Auto-created when a provider is set up
+└── validation-log.json               ← Last validation timestamps
 
-### Step 1: Detect Project Type
+~/any-project/                        ← ANY PROJECT (no config needed!)
+├── (your code)                       ← The agent scans this
+└── (nothing from us)                 ← No .open-your-eyes/ dir in projects
+```
 
-Scan for these markers:
+### Key Insight: Nothing Lives in the Project
+
+Previous versions put a playbook file in the project. That's wrong. The skill is global — it lives in the user's home directory and works across every project. The project just has code. The agent reads this playbook from `~/.open-your-eyes/PLAYBOOK.md` and applies it to whatever project it's currently in.
+
+### capabilities.yaml
+
+This is the global "what can I do?" manifest. Updated every time a new provider is set up:
+
+```yaml
+# ~/.open-your-eyes/capabilities.yaml
+# Auto-generated. Tracks what the agent can do across all projects.
+
+deploy:
+  provider: vercel
+  can_do:
+    - create_project
+    - deploy_code
+    - set_env_vars
+    - manage_domains
+  limitations: []
+
+dns:
+  provider: cloudflare
+  can_do:
+    - create_records
+    - update_records
+    - delete_records
+  domains:
+    - yourdomain.com
+    - otherdomain.dev
+
+domain_registration:
+  provider: porkbun
+  can_do:
+    - search_domains
+    - register_domains
+  requires_approval: true  # always ask before purchasing
+
+database:
+  provider: supabase
+  can_do:
+    - create_project
+    - create_tables
+    - manage_rls
+    - deploy_edge_functions
+    - manage_storage
+    - manage_auth
+  projects:
+    - name: my-saas
+      ref: abcdefg
+      region: eu-central-1
+
+payments:
+  provider: stripe
+  mode: test  # or "live"
+  can_do:
+    - create_products
+    - create_checkout
+    - manage_subscriptions
+    - setup_webhooks
+
+email:
+  provider: resend
+  can_do:
+    - send_transactional
+  domains:
+    - yourdomain.com  # verified for sending
+
+app_stores:
+  apple:
+    can_do:
+      - submit_builds
+      - manage_metadata
+    team_id: XXXXXXXXXX
+  google_play:
+    can_do:
+      - upload_apk
+      - manage_listings
+
+# Added automatically as providers are configured
+# The agent reads this to know what's possible before scanning a project
+```
+
+### Provider Files
+
+Each `~/.open-your-eyes/providers/[name].yaml` stores non-secret metadata:
+
+```yaml
+# ~/.open-your-eyes/providers/vercel.yaml
+name: Vercel
+role: deploy
+account: your-username
+validated_at: 2025-01-15T10:30:00Z
+status: ok
+api_docs: https://vercel.com/docs/rest-api
+credential_keys:
+  - VERCEL_TOKEN
+```
+
+---
+
+## The Skill: "finish" / "open your eyes"
+
+When the user says **"finish"**, **"ship it"**, **"open your eyes"**, or **"deploy this"**, the agent executes this sequence:
+
+### Phase 1: Know What I Can Do (read global state)
+
+```
+1. Read ~/.open-your-eyes/capabilities.yaml
+   → Know what providers are configured
+   → Know what the agent can do (deploy, email, payments, etc.)
+
+2. Read ~/.open-your-eyes/secrets.env
+   → Load all credentials
+
+3. If ~/.open-your-eyes/ doesn't exist:
+   → This is a first-time user
+   → Jump to FIRST-TIME SETUP (Section below)
+```
+
+### Phase 2: Know What This Project Needs (scan codebase)
+
+```
+1. Detect project type (web, mobile, desktop, API, etc.)
+2. Scan dependencies for service integrations
+3. Scan env var references in source code
+4. Check project-level .env files for existing config
+
+Output: list of required capabilities for THIS project
+```
+
+### Phase 3: Match & Gap (what's covered, what's missing)
+
+```
+For each required capability:
+  → Is it in capabilities.yaml?
+     YES + validated recently → READY
+     YES + stale validation   → RE-VALIDATE
+     NO                       → GAP — need to set up
+
+Report to user:
+  "This project needs: deploy, database, payments, email.
+   You have: deploy ✓, database ✓, payments ✓, email ✗
+   One thing to set up: email via Resend (2 minutes)."
+```
+
+### Phase 4: Fill Gaps (minimal interaction)
+
+```
+For each gap:
+  1. If code tells us which provider → research THAT provider
+  2. If code doesn't say → ask user ONCE: "what do you use for [role]?"
+  3. Fetch live docs for the provider
+  4. Guide user to credential page (exact URL, exact steps)
+  5. Collect key → validate → store
+  6. Update capabilities.yaml
+```
+
+### Phase 5: Ship It
+
+```
+Once all capabilities are satisfied:
+
+  WEB APPS:
+  1. Deploy to configured host
+  2. Set environment variables on host (from secrets.env)
+  3. Point domain via DNS API
+  4. Verify HTTPS is working
+  5. Report: "Live at https://yourdomain.com"
+
+  MOBILE APPS:
+  1. Build release binary
+  2. Code-sign
+  3. Submit to App Store / Google Play
+  4. Report: "Submitted for review"
+
+  DESKTOP APPS:
+  1. Build for target platforms
+  2. Code-sign
+  3. Create GitHub release / upload to store
+  4. Report: "Release published"
+
+  PACKAGES / LIBRARIES:
+  1. Run tests
+  2. Bump version
+  3. Publish to registry
+  4. Report: "Published v1.2.3"
+```
+
+### Phase 6: Beyond Deploy (the "open your eyes" part)
+
+This is what makes it more than just a deploy tool. After shipping, the agent asks:
+
+```
+"Your app is live. Want me to also handle:"
+
+  □ SEO basics
+    → Generate meta tags, OpenGraph images, sitemap.xml, robots.txt
+    → Submit to Google Search Console (if credentials configured)
+
+  □ App Store Optimization (mobile)
+    → Generate screenshots, write description, keywords
+    → Localize for target markets
+
+  □ Social presence
+    → Generate social card images
+    → Draft launch tweet / post (user approves before sending)
+
+  □ Analytics setup
+    → Wire up configured analytics provider
+    → Set up key event tracking
+
+  □ Monitoring
+    → Wire up error tracking
+    → Set up uptime monitoring
+
+  □ Legal
+    → Generate privacy policy and terms of service (from templates)
+    → Add cookie consent (if targeting EU)
+
+  □ Performance
+    → Run Lighthouse audit
+    → Fix critical performance issues
+    → Set up CDN / caching headers
+
+These are all optional. The user picks what they want.
+The agent does the work.
+```
+
+---
+
+## First-Time Setup
+
+When `~/.open-your-eyes/` doesn't exist, the agent runs the onboarding flow.
+
+### Open With
+
+> I'm going to set you up so I can deploy, publish, and ship your projects automatically. This is a one-time setup — once done, it works for every project on this machine.
+>
+> I need to know what services you already use. Tell me about your setup:
+>
+> - Where do you host websites? (Vercel, Netlify, a traditional webhost, a VPS, etc.)
+> - Do you own any domains? Where are they registered? Where is DNS managed?
+> - Do you use a database service? (Supabase, Firebase, PlanetScale, or part of your hosting?)
+> - Do you accept payments? (Stripe, PayPal, etc.)
+> - Do you send emails from apps? (Resend, SendGrid, or SMTP from your host?)
+> - Anything else? (Analytics, error tracking, app stores, etc.)
+
+### Process
+
+```
+1. Listen to user's answers
+2. For EACH provider they mention:
+   a. Fetch that provider's current API docs
+   b. Determine what credentials are needed
+   c. Guide user to create/find credentials
+   d. Validate each credential
+   e. Store in ~/.open-your-eyes/secrets.env
+   f. Create provider file in ~/.open-your-eyes/providers/
+3. Build capabilities.yaml from all configured providers
+4. Run validation gates for configured capabilities
+5. Report what's ready
+```
+
+### Bootstrap Script
+
+```bash
+#!/bin/bash
+# Creates the ~/.open-your-eyes/ structure
+
+mkdir -p ~/.open-your-eyes/providers
+mkdir -p ~/.open-your-eyes/keys  # for .p8 files, keystores, etc.
+
+touch ~/.open-your-eyes/secrets.env
+chmod 600 ~/.open-your-eyes/secrets.env
+
+touch ~/.open-your-eyes/capabilities.yaml
+
+# Global gitignore
+grep -qxF '.open-your-eyes/' ~/.gitignore_global 2>/dev/null || \
+  echo ".open-your-eyes/" >> ~/.gitignore_global
+git config --global core.excludesFile ~/.gitignore_global
+
+echo "~/.open-your-eyes/ is ready."
+```
+
+---
+
+## Project Scan Reference
+
+### Project Type Detection
 
 ```
 Web App (SPA/SSR):
@@ -90,684 +356,373 @@ Web App (SPA/SSR):
   → vite.config.*, next.config.*, nuxt.config.*
 
 Static Site:
-  → index.html at root, no framework deps
+  → index.html at root (no framework deps)
   → hugo.toml, _config.yml (Jekyll), mkdocs.yml
 
-Mobile App (iOS):
-  → *.xcodeproj, *.xcworkspace, Podfile, Package.swift
-  → ios/ directory with Info.plist
+Mobile (iOS):
+  → *.xcodeproj, *.xcworkspace, Podfile, Package.swift, ios/
 
-Mobile App (Android):
-  → build.gradle, settings.gradle, AndroidManifest.xml
-  → android/ directory
+Mobile (Android):
+  → build.gradle, settings.gradle, AndroidManifest.xml, android/
 
 Cross-Platform Mobile:
   → capacitor.config.*, ionic.config.json
-  → app.json with "expo" key (React Native/Expo)
+  → app.json with "expo" key
   → pubspec.yaml (Flutter)
-  → .csproj with Xamarin/MAUI references
 
-Desktop App:
-  → electron-builder.yml, electron.vite.config.*
-  → tauri.conf.json
-  → Package.swift with .macOS platform
+Desktop:
+  → electron-builder.yml, tauri.conf.json
 
 API / Backend:
-  → main.go, cmd/ (Go) | manage.py, wsgi.py (Django)
-  → Gemfile with rails | server.ts/server.js with express/fastify/hono
-  → Cargo.toml (Rust)
+  → main.go | manage.py | Gemfile with rails | server.ts | Cargo.toml
 
 Monorepo:
   → pnpm-workspace.yaml, lerna.json, nx.json, turbo.json
-  → apps/ or packages/ (scan each sub-project recursively)
+  → Scan each sub-project recursively
 
 Containerized:
-  → Dockerfile, docker-compose.yml, compose.yaml
+  → Dockerfile, docker-compose.yml
 
 Serverless:
-  → serverless.yml, sam-template.yaml, wrangler.toml
-  → supabase/functions/, netlify/functions/, vercel.json with functions
+  → serverless.yml, wrangler.toml, supabase/functions/
+
+Browser Extension:
+  → manifest.json with "manifest_version"
+
+Package / Library:
+  → Publishable: has "main"/"exports" in package.json, setup.py, Cargo.toml with [lib]
 ```
 
-### Step 2: Detect Services & Dependencies
-
-Scan dependency files and source code for service integrations:
+### Dependency → Service Mapping
 
 ```
-Package managers to scan:
-  → package.json, requirements.txt, Pipfile, Gemfile, go.mod,
-    Cargo.toml, pubspec.yaml, Podfile, build.gradle, *.csproj
-
-Source code patterns:
-  → import/require statements, SDK initializations,
-    env var references (process.env.*, os.environ, etc.)
-
----
-
 HOSTING / DEPLOY:
-  vercel.json, .vercel/                          → Vercel
-  netlify.toml, _redirects                       → Netlify
-  wrangler.toml                                  → Cloudflare Workers/Pages
-  fly.toml                                       → Fly.io
-  app.yaml (with "runtime:")                     → Google App Engine
-  Procfile                                       → Heroku
-  render.yaml                                    → Render
-  railway.json, railway.toml                     → Railway
-  .platform.app.yaml                             → Platform.sh
-  Dockerfile (alone, no other deploy config)     → needs container registry + host
-  .htaccess, .php files                          → traditional webhost (Apache)
-  nginx.conf                                     → traditional webhost (nginx)
-
-DNS / DOMAINS:
-  (Rarely in code — ask the user)
+  vercel.json               → Vercel
+  netlify.toml              → Netlify
+  wrangler.toml             → Cloudflare Workers/Pages
+  fly.toml                  → Fly.io
+  Procfile                  → Heroku
+  render.yaml               → Render
+  railway.toml              → Railway
+  Dockerfile (standalone)   → needs container host
+  .htaccess / .php          → traditional webhost
+  nginx.conf                → traditional webhost
 
 DATABASE:
-  @supabase/supabase-js, supabase-py             → Supabase
-  @prisma/client + DATABASE_URL                  → check connection string for provider
-  pg, postgres, psycopg2                         → PostgreSQL (where?)
-  mysql2, mysqlclient                            → MySQL (where?)
-  mongoose, mongodb                              → MongoDB (Atlas? self-hosted?)
-  @planetscale/database                          → PlanetScale
-  @neondatabase/serverless                       → Neon
-  @libsql/client, @turso                         → Turso
-  firebase-admin, firebase/firestore             → Firebase/Firestore
-  drizzle-orm, typeorm, sequelize, knex          → check their config for connection target
-  better-sqlite3, sqlite3                        → SQLite (local, no credentials needed)
+  @supabase/supabase-js     → Supabase
+  @prisma/client            → check DATABASE_URL for provider
+  pg, psycopg2              → PostgreSQL (where?)
+  mysql2, mysqlclient       → MySQL (where?)
+  mongoose, mongodb         → MongoDB (Atlas? self-hosted?)
+  @planetscale/database     → PlanetScale
+  @neondatabase/serverless  → Neon
+  @libsql/client            → Turso
+  firebase/firestore        → Firebase
+  better-sqlite3            → SQLite (no credentials needed)
 
 AUTH:
-  @supabase/auth-helpers, @supabase/ssr          → Supabase Auth
-  next-auth, @auth/core                          → NextAuth (check providers config)
-  firebase/auth                                  → Firebase Auth
-  @clerk/*, @clerk                               → Clerk
-  auth0, @auth0/*                                → Auth0
-  passport, passport-*                           → Passport.js (check strategies)
-  @kinde-oss/*                                   → Kinde
-  lucia, @lucia-auth/*                           → Lucia (self-hosted, check adapter)
+  @supabase/ssr             → Supabase Auth
+  next-auth, @auth/core     → NextAuth (check providers)
+  firebase/auth             → Firebase Auth
+  @clerk/*                  → Clerk
+  @auth0/*                  → Auth0
+  @kinde-oss/*              → Kinde
+  lucia                     → Lucia (check adapter)
 
 PAYMENTS:
-  @stripe/stripe-js, stripe                      → Stripe
-  @paypal/checkout-server-sdk                    → PayPal
-  @mollie/api-client                             → Mollie
-  @lemonsqueezy/lemonsqueezy.js                  → LemonSqueezy
-  paddle-sdk, @paddle/*                          → Paddle
-  razorpay                                       → Razorpay
+  stripe, @stripe/stripe-js → Stripe
+  @paypal/*                 → PayPal
+  @mollie/api-client        → Mollie
+  @lemonsqueezy/*           → LemonSqueezy
+  paddle-sdk                → Paddle
 
 EMAIL:
-  resend                                         → Resend
-  @sendgrid/mail                                 → SendGrid
-  postmark, postmark.js                          → Postmark
-  nodemailer                                     → SMTP (check config for provider)
-  @aws-sdk/client-ses                            → AWS SES
-  mailgun.js, mailgun-js                         → Mailgun
+  resend                    → Resend
+  @sendgrid/mail            → SendGrid
+  postmark                  → Postmark
+  nodemailer                → SMTP (check config)
+  @aws-sdk/client-ses       → AWS SES
 
-STORAGE / FILE UPLOADS:
-  @supabase/storage-js                           → Supabase Storage
-  @aws-sdk/client-s3, aws-sdk (S3)              → AWS S3 (or compatible: R2, MinIO)
-  @google-cloud/storage                          → Google Cloud Storage
-  @azure/storage-blob                            → Azure Blob Storage
-  firebase/storage                               → Firebase Storage
-  cloudinary                                     → Cloudinary
-  uploadthing, @uploadthing/*                    → UploadThing
+STORAGE:
+  @supabase/storage-js      → Supabase Storage
+  @aws-sdk/client-s3        → S3 (or compatible: R2, MinIO)
+  @google-cloud/storage     → GCS
+  firebase/storage          → Firebase Storage
+  cloudinary                → Cloudinary
 
 ANALYTICS:
-  posthog-js, posthog-node                       → PostHog
-  plausible-tracker                              → Plausible
-  @vercel/analytics                              → Vercel Analytics
-  mixpanel, mixpanel-browser                     → Mixpanel
-  @segment/analytics-next                        → Segment
-  firebase/analytics                             → Google Analytics (via Firebase)
+  posthog-js                → PostHog
+  plausible-tracker         → Plausible
+  @vercel/analytics         → Vercel Analytics
+  mixpanel                  → Mixpanel
 
-ERROR MONITORING:
-  @sentry/*, sentry-sdk                          → Sentry
-  @highlight-run/*                               → Highlight
-  logrocket                                      → LogRocket
-  @datadog/browser-rum                           → Datadog
-  bugsnag, @bugsnag/*                            → Bugsnag
+ERRORS:
+  @sentry/*                 → Sentry
+  logrocket                 → LogRocket
+  @datadog/browser-rum      → Datadog
 
-PUSH NOTIFICATIONS:
-  firebase/messaging                             → Firebase Cloud Messaging
-  @onesignal/*                                   → OneSignal
-  web-push                                       → Web Push (needs VAPID keys)
-  expo-notifications                             → Expo Push
+AI/ML:
+  openai                    → OpenAI
+  @anthropic-ai/sdk         → Anthropic
+  @google/generative-ai     → Google AI
+  replicate                 → Replicate
 
-CMS / CONTENT:
-  @sanity/client                                 → Sanity
-  contentful                                     → Contentful
-  @strapi/*                                      → Strapi
-  @keystonejs/*                                  → Keystone
+CMS:
+  @sanity/client            → Sanity
+  contentful                → Contentful
 
 SEARCH:
-  algoliasearch                                  → Algolia
-  meilisearch                                    → Meilisearch
-  typesense                                      → Typesense
+  algoliasearch             → Algolia
+  meilisearch               → Meilisearch
 
-AI / ML:
-  openai                                         → OpenAI
-  @anthropic-ai/sdk                              → Anthropic
-  @google/generative-ai                          → Google AI
-  replicate                                      → Replicate
-  @huggingface/*                                 → Hugging Face
+PUSH:
+  firebase/messaging        → FCM
+  @onesignal/*              → OneSignal
+  web-push                  → Web Push (VAPID keys)
 
-CI/CD:
-  .github/workflows/                             → GitHub Actions
-  .gitlab-ci.yml                                 → GitLab CI
-  .circleci/                                     → CircleCI
-  bitbucket-pipelines.yml                        → Bitbucket Pipelines
-
-MOBILE-SPECIFIC:
-  *.xcodeproj + exportOptions.plist              → Apple Developer (signing)
-  google-services.json                           → Firebase (Android)
-  GoogleService-Info.plist                       → Firebase (iOS)
-  fastlane/                                      → Fastlane (needs store credentials)
-  eas.json                                       → Expo Application Services
-  android/app/build.gradle with signingConfigs   → Android Keystore
+MOBILE:
+  fastlane/                 → App Store + Play Store credentials
+  eas.json                  → Expo (EXPO_TOKEN)
+  google-services.json      → Firebase (Android)
+  GoogleService-Info.plist  → Firebase (iOS)
 ```
 
-### Step 3: Detect Existing Configuration
+### Detecting Existing Configuration
 
 ```
-Check in this order:
+Check in order:
+1. ~/.open-your-eyes/secrets.env    ← global store (validate keys still work)
+2. .env, .env.local, .env.*         ← project-level (note which keys exist)
+3. Shell environment                ← already exported
+4. Config files                     ← supabase/config.toml, wrangler.toml, etc.
+5. CI/CD references                 ← .github/workflows (secret names only)
 
-1. ~/.open-your-eyes/secrets.env          ← our credential store
-2. .env, .env.local, .env.development     ← project-level env files
-3. Environment variables in shell          ← already exported
-4. Config files with credential fields     ← e.g., supabase/config.toml
-5. CI/CD secrets                           ← .github/workflows (reference names only)
-6. vercel.json / netlify.toml env sections ← deploy-time env vars
-
-DO NOT read or log actual values from .env files — just note which keys exist.
-For ~/.open-your-eyes/secrets.env, validate that stored keys still work.
-```
-
-### Step 4: Scan for Unreferenced Env Vars
-
-Grep source code for `process.env.SOMETHING`, `os.environ["SOMETHING"]`, `env("SOMETHING")`, `import.meta.env.SOMETHING`, etc. Cross-reference with what exists. Any env var referenced in code but undefined anywhere is a credential gap.
-
-### Step 5: Build the Requirements Matrix
-
-```
-EXAMPLE OUTPUT:
-
-Project Type: Next.js web app with Supabase + Stripe
-Deploy Target: Vercel (vercel.json found)
-
-┌─────────────┬──────────────┬─────────────────┬──────────────┐
-│ Role        │ Provider     │ Detected Via    │ Credentials  │
-├─────────────┼──────────────┼─────────────────┼──────────────┤
-│ Hosting     │ Vercel       │ vercel.json     │ ✗ MISSING    │
-│ DNS         │ ???          │ (not in code)   │ ✗ ASK USER   │
-│ Database    │ Supabase     │ package.json    │ ✓ in .env    │
-│ Auth        │ Supabase     │ @supabase/ssr   │ ✓ in .env    │
-│ Payments    │ Stripe       │ stripe in deps  │ ✗ MISSING    │
-│ Email       │ Resend       │ resend in deps  │ ✗ MISSING    │
-│ Analytics   │ PostHog      │ posthog-js      │ ✓ in .env    │
-│ Errors      │ —            │ not detected    │ — SKIP       │
-└─────────────┴──────────────┴─────────────────┴──────────────┘
-
-ACTIONS (in order — minimize human interruptions):
- 1. [AGENT]  Validate existing Supabase + PostHog keys still work
- 2. [HUMAN]  Paste Vercel API token (I'll show you exactly where to get it)
- 3. [HUMAN]  Tell me where DNS is managed for your domain
- 4. [HUMAN]  Paste Stripe keys (I'll show you exactly where)
- 5. [HUMAN]  Paste Resend API key (I'll show you exactly where)
- 6. [AGENT]  Validate all new keys
- 7. [AGENT]  Run end-to-end deploy test
+Also grep source for unreferenced env vars:
+  process.env.*, os.environ, import.meta.env.*, env("...")
+  → Any env var in code but not in any .env file = gap
 ```
 
 ---
 
-## 2. The Conversation
+## Platform-Specific Needs
 
-### Present the Scan — Don't Interrogate
-
-Show the matrix. Be direct about what you need:
-
-> I've scanned your project. It's a Next.js app using Supabase, Stripe, and Resend.
->
-> Supabase and PostHog keys are already configured — I'm validating them now.
->
-> I need 3 things from you:
-> 1. A Vercel API token — go to [URL], I'll tell you exactly what to click
-> 2. Your Stripe keys — go to [URL]
-> 3. A Resend API key — go to [URL]
->
-> Also: where do you manage DNS for your domain? (I need this to point your domain at the deployment.)
-
-### Batch Human Actions
-
-Don't make the user do one thing at a time. Give them all the URLs upfront:
-
-> While I validate your existing keys, you can get the new ones in parallel. Open these 3 tabs:
-> 1. [Vercel tokens page — LIVE URL fetched from docs]
-> 2. [Stripe API keys page — LIVE URL fetched from docs]
-> 3. [Resend API keys page — LIVE URL fetched from docs]
->
-> For each one: create a new key, copy it, paste it back here. I'll validate each one as you give it to me.
-
-### For Each Credential the User Needs to Create
-
-The agent should:
-
-1. **Fetch the provider's current docs** (RULE: never trust training data)
-2. **Give the exact current URL** to the credentials page
-3. **Give the minimum steps**: "click X, name it Y, select Z scope, copy the result"
-4. **Explain what it grants** in one sentence: "This lets me deploy code to your Vercel account"
-5. **Collect it**: "Paste it here"
-6. **Validate immediately**: make a real API call, report success or diagnose failure
-7. **Store it**: write to `~/.open-your-eyes/secrets.env`
-
-What the agent does NOT do:
-- Explain what an API is
-- Give a history of the provider
-- List features the user didn't ask about
-- Offer alternatives when the provider is already chosen by the code
-
-### Questions Only for What Code Can't Tell You
-
-- **DNS provider** — "Where do you manage DNS for `yourdomain.com`?"
-- **Existing accounts** — "Do you already have a [detected provider] account, or should I walk you through creating one?"
-- **Which account** — if multiple projects/orgs are possible: "Which Supabase project is this app connected to?"
-
-### When the User Names a Provider You Don't Know
-
-This will happen. The user says "I use lima-city" or "my hosting is at All-Inkl" or "we use Mollie for payments." Your training data probably has nothing useful.
-
+### Mobile (iOS)
 ```
-1. DO NOT pretend you know their API
-2. DO search for their docs RIGHT NOW
-3. DO read their API/developer documentation
-4. DO figure out: auth method, key creation URL, validation endpoint
-5. DO build a step-by-step guide from LIVE docs
-6. If the provider has no API: say so, discuss workarounds (SSH, FTP, polyfill)
+HUMAN: Log into Apple Developer ($99/yr), approve app submission
+AGENT: Everything else — signing, provisioning, builds, metadata, screenshots
+
+Credentials needed:
+  APPLE_TEAM_ID
+  APPLE_API_KEY_ID + APPLE_API_ISSUER_ID + .p8 file
+  (Agent stores .p8 in ~/.open-your-eyes/keys/)
 ```
 
----
-
-## 3. Platform-Specific Requirements
-
-### Mobile Apps (iOS)
-
-If `*.xcodeproj` or `ios/` detected:
-
+### Mobile (Android)
 ```
-REQUIRED:
-├── Apple Developer Account ($99/year)
-│   ├── Team ID
-│   ├── App Store Connect API Key (.p8 file + Key ID + Issuer ID)
-│   ├── Signing Certificate (distribution)
-│   └── Provisioning Profile
-│
-├── If using Fastlane:
-│   ├── MATCH_PASSWORD (cert encryption)
-│   ├── MATCH_GIT_URL (cert storage repo)
-│   └── APP_STORE_CONNECT_API_KEY_PATH
-│
-├── If using Expo EAS:
-│   ├── EXPO_TOKEN
-│   └── Apple credentials (EAS manages interactively)
-│
-└── If push notifications:
-    └── APNs key (.p8) — often same as App Store Connect key
+HUMAN: Log into Google Play Console ($25), approve app submission
+AGENT: Everything else — keystores, builds, listings, screenshots
 
-AGENT DOES: Generate provisioning profiles, manage signing, submit builds
-HUMAN DOES: Log into Apple Developer portal, approve account creation, pay $99/year
+Credentials needed:
+  Google Play service account JSON (→ ~/.open-your-eyes/keys/)
+  Android keystore (agent can generate one)
 ```
 
-### Mobile Apps (Android)
-
-If `android/` or `build.gradle` detected:
-
+### Desktop (Electron / Tauri)
 ```
-REQUIRED:
-├── Google Play Console ($25 one-time)
-│   ├── Service Account JSON key
-│   └── Upload Keystore (.jks or .keystore)
-│       ├── ANDROID_KEYSTORE_PATH
-│       ├── ANDROID_KEYSTORE_PASSWORD
-│       ├── ANDROID_KEY_ALIAS
-│       └── ANDROID_KEY_PASSWORD
-│
-├── If using Fastlane:
-│   └── SUPPLY_JSON_KEY (path to service account JSON)
-│
-└── If using Expo EAS:
-    └── EXPO_TOKEN + Google Service Account JSON
+HUMAN: Purchase code-signing certificates
+AGENT: Build, sign, notarize, create releases, auto-update
 
-AGENT DOES: Generate keystores, configure signing, submit builds, manage listings
-HUMAN DOES: Log into Google Play Console, approve developer registration, pay $25
-```
-
-### Desktop Apps (Electron / Tauri)
-
-```
-REQUIRED:
-├── Code Signing:
-│   ├── macOS: Apple Developer ID cert + notarization credentials
-│   ├── Windows: Code signing certificate (.pfx)
-│   └── Linux: GPG key (optional)
-│
-├── Auto-Update:
-│   └── GitHub token (for releases) or S3 bucket
-│
-└── Distribution:
-    ├── Mac App Store → Apple Developer account
-    ├── Microsoft Store → Microsoft Partner Center
-    └── Snap Store → snapcraft token
-
-AGENT DOES: Configure signing, build installers, publish releases, set up auto-update
-HUMAN DOES: Purchase certificates, log into store accounts
+Credentials needed:
+  macOS: Apple Developer ID cert + notarization credentials
+  Windows: Code signing cert (.pfx)
+  Tauri: TAURI_SIGNING_PRIVATE_KEY
 ```
 
 ### Browser Extensions
-
-If `manifest.json` with `"manifest_version"` detected:
-
 ```
-REQUIRED:
-├── Chrome Web Store: OAuth2 credentials ($5 one-time)
-├── Firefox Add-ons: JWT credentials (free)
-└── Edge Add-ons: Microsoft Partner Center
+HUMAN: Register developer accounts (Chrome $5, Firefox free)
+AGENT: Package, upload, manage listings
 
-AGENT DOES: Package extension, upload builds, manage listings
-HUMAN DOES: Register developer accounts, pay one-time fees
+Credentials needed:
+  Chrome: OAuth2 client credentials
+  Firefox: JWT API credentials
 ```
 
-### CLI Tools / Libraries (Publishing)
-
+### Packages / Libraries
 ```
-REQUIRED per registry:
-├── npm: NPM_TOKEN
-├── PyPI: PYPI_API_TOKEN
-├── crates.io: CARGO_REGISTRY_TOKEN
-├── RubyGems: GEM_HOST_API_KEY
-└── Go: (no token needed)
+HUMAN: Create registry account
+AGENT: Build, test, version, publish
 
-AGENT DOES: Build, test, version, publish
-HUMAN DOES: Create registry account, generate token
+Credentials needed:
+  npm: NPM_TOKEN | PyPI: PYPI_API_TOKEN | crates.io: CARGO_REGISTRY_TOKEN
 ```
 
-### Containerized Apps
-
+### Containers
 ```
-REQUIRED:
-├── Container Registry (Docker Hub, GHCR, ECR, GCR, self-hosted)
-└── Container Host (Fly, Railway, Cloud Run, ECS, VPS, K8s)
+HUMAN: Create registry + host accounts
+AGENT: Build images, push, deploy, scale
 
-AGENT DOES: Build images, push to registry, deploy, manage scaling
-HUMAN DOES: Create accounts, paste credentials
+Credentials needed:
+  Registry: DOCKER_USERNAME + token, or GITHUB_TOKEN, or cloud credentials
+  Host: FLY_API_TOKEN, RAILWAY_TOKEN, cloud credentials, or SSH
 ```
 
 ---
 
-## 4. Gap Analysis & Polyfill
+## Gap Analysis: Think in User Flows
 
-After scan + credential collection, identify what's missing for the project to actually go live.
-
-### The Agent Thinks in User Flows
-
-Don't think in services — think in what the end user of the app does:
+Don't think in services. Think in what the end user does:
 
 ```
 "A user visits the site"
   → Need: hosting + DNS + domain + SSL
-  → Is all of this wired up?
+  → All wired up? → Ship it
+  → Missing DNS? → Ask where DNS is managed, set up once globally
 
 "A user signs up"
-  → Need: auth provider + email (for verification)
-  → Auth is configured but no email? That's a broken flow.
+  → Need: auth + email (for verification)
+  → Auth configured but no email? → Signups silently fail. Fix this.
 
-"A user makes a purchase"
-  → Need: payment provider + webhooks + database (to record it)
-  → Stripe key exists but no webhook secret? Payments will seem to work but won't be recorded.
+"A user pays"
+  → Need: payments + webhooks + database (to record transactions)
+  → Stripe key but no webhook secret? → Payments won't be recorded.
 
-"A user uploads a file"
-  → Need: storage provider
-  → Storage SDK imported but no bucket configured?
-
-"The developer pushes code"
-  → Need: CI/CD or deploy pipeline
-  → Code is ready but no deploy mechanism? That's the last mile.
+"A developer says 'ship it'"
+  → Need: deploy pipeline
+  → Code ready but no deploy target? → That's why we're here.
 ```
-
-Report gaps as broken flows, not missing services:
-
-> Your app has user registration, but no email provider configured. Users won't receive verification emails, so signups will silently fail. Want to set up email sending?
 
 ### Polyfill Rules
 
-1. **Never replace** — if the user's provider works, use it
-2. **Only polyfill gaps** — suggest new services only when a user flow is broken
-3. **Cloudflare as DNS polyfill** — the one case where it's always appropriate: user's registrar has no DNS API → point nameservers to Cloudflare (free)
-4. **SSH/FTP as deploy fallback** — host has no deploy API but has SSH? Deploy via rsync.
-5. **SMTP as email fallback** — no email API but host includes SMTP? Use SMTP.
+- **Never replace** what works
+- **Cloudflare as DNS polyfill** — registrar has no DNS API? Point nameservers to Cloudflare.
+- **SSH/FTP as deploy fallback** — host has no API? Deploy via rsync.
+- **SMTP as email fallback** — no email API? Most hosts include SMTP.
+- **Only suggest new services** when a user flow is actually broken
 
 ---
 
-## 5. Credential Collection Protocol
+## Credential Collection Protocol
 
-For each credential the agent needs:
-
-### The Agent's Checklist (internal, don't show to user)
+For EVERY credential, even for well-known providers:
 
 ```
-□ 1. RESEARCH: Fetch this provider's CURRENT docs
-      Search: "[provider] API documentation"
-      Search: "[provider] create API key"
-      Search: "[provider] developer portal"
-      Read: their auth/authentication page
-      Read: their API reference (at least the auth section)
-      Note: auth method, token format, required scopes
-
-□ 2. FIND: The exact current URL where the user creates credentials
-      DO NOT use a URL from training data
-      DO verify the URL loads and goes where expected
-      If the URL has changed, find the new one
-
-□ 3. GUIDE: Write the minimum steps
-      "Go to [URL]. Click [button]. Name it [suggestion]. Copy the result."
-      No preamble. No history. No explanations they didn't ask for.
-
-□ 4. COLLECT: Ask for the credential
-      "Paste your [provider] API key here."
-      One credential at a time, or batch if the user is fast.
-
-□ 5. VALIDATE: Make a real API call
-      Use the CURRENT endpoint from the docs you just fetched
-      Hit a read-only endpoint (list projects, get account info)
-      Report: "✓ Connected to [account name]" or diagnose failure
-
-□ 6. STORE: Write to ~/.open-your-eyes/secrets.env
-      Variable name: [PROVIDER]_[CREDENTIAL_TYPE]
-      Include [ROLE]_PROVIDER=[provider] tag
-
-□ 7. CONFIRM: Tell the user what this unlocks
-      "✓ I can now deploy to your Vercel account."
-      One sentence. Move on.
+1. FETCH the provider's current docs (never trust training data)
+2. FIND the exact current URL to the credentials page
+3. GUIDE with minimum steps: "Go to [URL]. Click [button]. Paste what you see."
+4. VALIDATE with a real API call using current endpoints
+5. STORE in ~/.open-your-eyes/secrets.env
+6. UPDATE capabilities.yaml and providers/[name].yaml
+7. CONFIRM in one sentence: "✓ I can now deploy to Vercel."
 ```
 
-### When Validation Fails
-
-The agent's job is to diagnose, not punt back to the user:
+### When Validation Fails (agent diagnoses, doesn't punt)
 
 ```
-401 Unauthorized:
-  → Key is wrong, expired, or has wrong permissions
-  → Check: was it copied with extra whitespace?
-  → Check: is it the right type of key? (API key vs OAuth token vs...)
-  → Guide: "That key didn't work. The most common reason is [X].
-    Try [specific fix]. If that doesn't work, create a new key at [URL]."
-
-403 Forbidden:
-  → Key works but lacks permissions
-  → Guide: "Your key doesn't have permission to [action]. Go to [URL]
-    and make sure [specific permission] is enabled."
-
-404 Not Found:
-  → Endpoint may have changed (this is why you fetch live docs!)
-  → Re-check the current API docs
-  → If the endpoint moved, update your validation call
-
-Connection refused / timeout:
-  → Service might be down, or URL is wrong
-  → Check the provider's status page
+401 → Wrong key, expired, or wrong type. Check whitespace. Guide to recreate.
+403 → Key works but wrong permissions. Guide to correct scope.
+404 → Endpoint changed. Re-fetch live docs. Update validation call.
+Timeout → Service down? Check status page. Retry later.
 ```
 
 ---
 
-## 6. Credential Storage
+## Validation Gates
 
-### Location
-```
-~/.open-your-eyes/
-├── secrets.env           # All credentials — chmod 600, never committed
-├── config.yaml           # Non-secret config (preferences, regions)
-└── validation-log.json   # Last validation result per service
-```
+Prove the pipeline works. Match gates to project type:
 
-### Setup (run once, idempotent)
-```bash
-mkdir -p ~/.open-your-eyes
-touch ~/.open-your-eyes/secrets.env
-chmod 600 ~/.open-your-eyes/secrets.env
-grep -qxF '.open-your-eyes/' ~/.gitignore_global 2>/dev/null || echo ".open-your-eyes/" >> ~/.gitignore_global
-git config --global core.excludesFile ~/.gitignore_global
-```
-
-### secrets.env Format
-```bash
-# Pattern: [ROLE]_PROVIDER=[name] then [PROVIDER]_[CREDENTIAL_TYPE]=[value]
-
-# ===== DEPLOY =====
-DEPLOY_PROVIDER=vercel
-VERCEL_TOKEN=xxx
-
-# ===== DNS =====
-DNS_PROVIDER=cloudflare
-CLOUDFLARE_API_TOKEN=xxx
-CLOUDFLARE_ZONE_ID=xxx
-
-# ===== DOMAIN =====
-DOMAIN=yourdomain.com
-DOMAIN_REGISTRAR=porkbun
-PORKBUN_API_KEY=xxx
-PORKBUN_SECRET_KEY=xxx
-
-# ===== DATABASE =====
-DB_PROVIDER=supabase
-SUPABASE_URL=xxx
-SUPABASE_ANON_KEY=xxx
-SUPABASE_SERVICE_ROLE_KEY=xxx
-
-# ===== PAYMENTS =====
-PAYMENTS_PROVIDER=stripe
-STRIPE_PUBLISHABLE_KEY=xxx
-STRIPE_SECRET_KEY=xxx
-
-# ===== EMAIL =====
-EMAIL_PROVIDER=smtp
-SMTP_HOST=xxx
-SMTP_PORT=587
-SMTP_USER=xxx
-SMTP_PASS=xxx
-
-# ===== MOBILE (iOS) =====
-APPLE_TEAM_ID=xxx
-APPLE_API_KEY_ID=xxx
-APPLE_API_ISSUER_ID=xxx
-APPLE_API_KEY_PATH=~/.open-your-eyes/keys/AuthKey_XXXXX.p8
-
-# ===== MOBILE (Android) =====
-GOOGLE_PLAY_JSON_KEY_PATH=~/.open-your-eyes/keys/google-play.json
-ANDROID_KEYSTORE_PATH=xxx
-ANDROID_KEYSTORE_PASSWORD=xxx
-ANDROID_KEY_ALIAS=xxx
-ANDROID_KEY_PASSWORD=xxx
-```
-
----
-
-## 7. Validation Gates
-
-Prove the pipeline works. Don't validate services in isolation — validate **user flows**.
-
-### Gate Selection (based on project type)
-
-| Project Type | Gate |
-|-------------|------|
-| Any web project | Deploy a test page to the host |
-| Web + custom domain | Point domain at deployment, confirm HTTPS |
-| Web + database | Create table, write row, read it back, clean up |
-| Web + payments | Create test product, clean up |
-| Web + email | Send test email to user |
-| Mobile (iOS) | Validate signing, connect to App Store Connect |
-| Mobile (Android) | Validate keystore, connect to Google Play |
-| Desktop | Code-sign a test binary |
+| If project has... | Test |
+|---|---|
+| Web hosting | Deploy a test page |
+| Custom domain | Point domain, confirm HTTPS |
+| Database | Create table, write, read, clean up |
+| Payments | Create test product, clean up |
+| Email | Send test email to user |
+| iOS target | Validate signing + App Store Connect |
+| Android target | Validate keystore + Google Play |
 | Container | Push test image to registry |
 
-### Gate Protocol
-
-```
-1. Tell the user what you're about to do (one sentence)
-2. Ask: "OK to proceed?" (this is the APPROVE step)
-3. Do it
-4. Report result
-5. Clean up test resources
-6. Move on — don't celebrate, don't recap
-```
+Protocol: tell user what you'll do → get approval → do it → report → clean up.
 
 ---
 
-## 8. After Setup: What the Agent Can Now Do
+## After "finish": The Checklist
 
-Once credentials are collected and validated, the agent should confirm what's unlocked:
+When the agent ships a project, it doesn't just deploy. It runs through everything that makes a launch real:
 
 ```
-EXAMPLE:
+DEPLOY (automatic):
+  ✓ Code deployed to host
+  ✓ Environment variables synced
+  ✓ Domain pointed + HTTPS confirmed
+  ✓ Database migrations run (if applicable)
 
-✓ Setup complete. Here's what I can do for you now:
+LAUNCH READINESS (agent offers, user picks):
+  □ SEO: meta tags, OG images, sitemap.xml, robots.txt
+  □ Legal: privacy policy, terms of service, cookie consent
+  □ Performance: Lighthouse audit, fix critical issues
+  □ Analytics: wire up tracking, set key events
+  □ Monitoring: error tracking, uptime checks
+  □ Social: generate social cards, draft launch post
+  □ App Store (mobile): screenshots, description, keywords, submit
+  □ Marketing page: generate landing page if the project is an API/tool
 
-  Deploy code to your Vercel account         → say "deploy" or "ship it"
-  Point your domain at any deployment        → automatic after deploy
-  Create and manage database tables          → just describe your data model
-  Set up user auth and registration          → just describe who can do what
-  Process payments via Stripe (test mode)    → describe your pricing
-  Send emails from your app                  → describe when to send what
-
-  You approve. I do the rest.
+Each item: agent does the work, user approves the result.
 ```
 
 ---
 
-## 9. Re-entry Points
+## Installation
 
-The playbook isn't one-time. The agent re-enters it when:
+### For Users
 
-- **Missing credential at runtime** — tried to deploy, no token → run deploy credential section
-- **Expired credential** — API returns 401 → guide rotation
-- **New dependency added** — user installed a new SDK → re-scan, detect new requirements
-- **New project** — playbook dropped into different project → full scan, reuse existing global creds
-- **User asks** — "add payments to this app" → run payments section
-- **Stale validation** — >30 days since last check → re-validate all stored credentials
+```bash
+# Clone and install globally
+git clone https://github.com/[you]/open-your-eyes.git /tmp/oye-install
+bash /tmp/oye-install/install.sh
+rm -rf /tmp/oye-install
+
+# Or manually:
+mkdir -p ~/.open-your-eyes/providers ~/.open-your-eyes/keys
+cp PLAYBOOK.md ~/.open-your-eyes/PLAYBOOK.md
+chmod 600 ~/.open-your-eyes/secrets.env
+```
+
+Then in any project, tell your AI agent: **"finish"** or **"open your eyes"**.
+
+### For Claude Code Users
+
+Add to your `~/.claude/CLAUDE.md`:
+
+```markdown
+## Open Your Eyes
+
+When I say "finish", "ship it", "deploy", or "open your eyes":
+1. Read ~/.open-your-eyes/PLAYBOOK.md
+2. Follow its instructions to scan this project and ship it
+```
+
+Or create it as a slash command / skill for even tighter integration.
 
 ---
 
-## 10. How to Use This Playbook
+## Summary
 
-**Drop it into any project.** Tell your AI agent:
+```
+WHAT IT IS:
+  A global agent skill that lives in ~/.open-your-eyes/
+  Works across every project on your machine
+  Set up once — never fill out the same questionnaire twice
 
-> "Set me up."
+WHAT IT DOES:
+  Scans any project → detects what's needed → checks what you have →
+  fills gaps (minimal interaction) → deploys → handles launch checklist
 
-The agent scans your code, figures out what's needed, fetches the latest docs for every service, and tells you exactly what to click. You approve, log in, paste keys. The agent handles everything else.
+WHAT THE HUMAN DOES:
+  Approves. Logs in. Pays. That's it.
 
----
-
-## Appendix: The Dependency Map Is a Starting Point
-
-The package-to-service mappings in Section 1 are not exhaustive. New services appear constantly. If the agent encounters an import or SDK it doesn't recognize:
-
-1. Search for it: `"[package name] npm"` or `"[package name] documentation"`
-2. Determine what service it belongs to
-3. Add it to the mental model for this project
-4. Follow the standard credential collection protocol
-
-The map is a cheat sheet, not a limit. The agent should be able to handle anything it finds in the code.
+WHAT THE AGENT DOES:
+  Everything else. Research. Config. Deploy. Validate. Troubleshoot.
+  SEO. Legal. Performance. Analytics. App Store. Marketing.
+  All using LIVE documentation, never stale training data.
+```

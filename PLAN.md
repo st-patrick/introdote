@@ -2,36 +2,29 @@
 
 ## Vision
 
-A single drag-and-drop file (`PLAYBOOK.md`) that works in any project. An AI agent reads it, scans the codebase to figure out what services the project depends on, checks what credentials are already configured, and walks the user through collecting only what's missing.
+A global agent skill. Install it once, and every project on your machine gets a "finish" button. The agent scans the code, checks your global credentials, fills gaps with minimal interaction, and ships — deploy, domain, database, payments, app store, marketing, everything.
 
-Works for web apps, mobile apps, APIs, CLIs, desktop apps, monorepos — whatever it finds in the codebase.
+The human approves, logs in, and pays. The agent does everything else.
 
-## How It Works
+## Architecture
 
-1. **Scan** — detect project type, dependencies, service integrations, existing config
-2. **Map** — build a requirements matrix: what services are needed, what credentials exist, what's missing
-3. **Discover** — ask the user about things code can't tell you (DNS provider, registrar, existing accounts)
-4. **Research** — for any provider the agent doesn't know, look up their API docs on the fly
-5. **Collect** — guide the user to the exact credentials page, step by step
-6. **Validate** — make real API calls to prove each credential works
-7. **Store** — write to `~/.open-your-eyes/secrets.env`, never in the project, never in git
-8. **Gate** — run end-to-end validation to prove the full pipeline works
+- `~/.open-your-eyes/` — global capability store (secrets, provider configs, the playbook itself)
+- Nothing in project directories — the agent reads the playbook from home, applies it to the current project
+- `capabilities.yaml` — manifest of what the agent can do, auto-updated as providers are configured
+- Provider files — per-provider metadata, validation state, account info
 
-## Key Principles
+## Principles
 
-- **Code-first discovery** — read the project before asking questions
-- **Provider-agnostic** — adapt to what the user already uses, don't prescribe
-- **Only collect what's missing** — don't re-ask for credentials that already exist and validate
-- **Platform-aware** — mobile apps need App Store keys, desktop apps need code signing, etc.
-- **Polyfill, don't replace** — only suggest new services to fill gaps, never to replace working setups
+1. **Human does 3 things**: approve, log in, pay. Everything else is the agent's job.
+2. **Never trust training data for APIs**: always fetch live docs before guiding through any provider.
+3. **Provider-agnostic**: works with whatever the user already uses, even obscure regional hosts.
+4. **Set up once**: credentials are global, shared across all projects. No repeated questionnaires.
+5. **Code-first discovery**: scan the project to detect what's needed before asking questions.
+6. **Think in user flows**: gaps are broken experiences, not missing services.
+7. **Beyond deploy**: SEO, legal, performance, analytics, app stores, social — the full last mile.
 
 ## What's Built
 
-- `PLAYBOOK.md` — the complete agent playbook covering:
-  - Project type detection (web, mobile, desktop, API, container, monorepo)
-  - Dependency-to-service mapping (150+ packages → services)
-  - Platform-specific requirements (iOS, Android, Electron, Tauri, Chrome extensions)
-  - Provider research protocol (for unknown providers)
-  - Gap analysis and polyfill strategy
-  - Credential storage and validation
-  - Re-entry and maintenance flows
+- `PLAYBOOK.md` — the complete agent skill (prime directives, scan logic, credential protocol, deploy flow, launch checklist)
+- `install.sh` — one-command global install (creates ~/.open-your-eyes/, hooks into Claude Code)
+- `README.md` — GitHub-ready project description
