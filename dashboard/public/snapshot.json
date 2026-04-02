@@ -128,8 +128,7 @@
     { "name": "wardrobe-manager", "framework": "static", "path": "~/Desktop/appaday/wardrobe-manager" }
   ],
   "liveSubdomains": [
-    { "name": "boared", "url": "https://boared.patrickreinbold.com" },
-    { "name": "dailymoji", "url": "https://dailymoji.patrickreinbold.com" },
+{ "name": "dailymoji", "url": "https://dailymoji.patrickreinbold.com" },
     { "name": "strategizer", "url": "https://strategizer.patrickreinbold.com" },
     { "name": "brain-teasers", "url": "https://brain-teasers.patrickreinbold.com" },
     { "name": "timekeeper", "url": "https://timekeeper.patrickreinbold.com" },
