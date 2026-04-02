@@ -795,6 +795,118 @@ Don't think in services. Think in what the end user does:
 
 ---
 
+## Using Capabilities (How to DO things, not just collect keys)
+
+The playbook isn't just about setup — it tells the agent how to USE the configured services. After reading `~/.introdote/capabilities.yaml` and `~/.introdote/secrets.env`, the agent has everything it needs to act.
+
+### Read Capabilities First
+
+```
+BEFORE doing anything with a service:
+1. Read ~/.introdote/capabilities.yaml — what providers are configured?
+2. Read ~/.introdote/providers/[provider].yaml — what endpoints exist?
+3. Read ~/.introdote/secrets.env — source credentials (by reference, not value)
+4. Check the provider's can_do list — is this action supported?
+5. If yes → do it via API. Don't ask the user.
+6. If no → tell the user what's missing and offer to set it up.
+```
+
+### Common Operations the Agent Should Just DO
+
+When the project needs something and capabilities.yaml says the provider supports it, the agent acts — doesn't ask for permission on routine operations.
+
+```
+CREATE EMAIL ADDRESS:
+  → Read capabilities.yaml → email.provider
+  → Read providers/[provider].yaml → endpoints
+  → POST to the email creation endpoint with the address details
+  → Report: "✓ Created hello@yourdomain.com"
+
+CREATE DNS RECORD:
+  → Read capabilities.yaml → dns.provider, find domain_id
+  → POST to DNS record creation endpoint
+  → Report: "✓ Added CNAME record for subdomain.domain.com"
+
+CREATE DATABASE:
+  → Read capabilities.yaml → database.provider
+  → POST to database creation endpoint
+  → Report: "✓ Created database for your project"
+
+DEPLOY CODE:
+  → Read capabilities.yaml → deploy.provider, deploy.method
+  → If CLI: run the deploy command
+  → If API: call the deploy endpoint
+  → If FTP: upload built files
+  → Report: "✓ Deployed to https://..."
+
+CREATE SUBDOMAIN:
+  → Create DNS record pointing subdomain at hosting
+  → If provider supports vhosts: create vhost mapping
+  → Report: "✓ subdomain.domain.com is ready"
+
+SET UP CRON JOB:
+  → Read capabilities.yaml → cron.provider
+  → POST to cron creation endpoint
+  → Report: "✓ Cron job created"
+```
+
+### The Agent Adapts to Whatever Provider is Configured
+
+The capabilities.yaml and provider files tell the agent WHAT is available. The agent then:
+
+1. **Fetches the provider's CURRENT API docs** (never trust training data)
+2. **Constructs the correct API call** from live documentation
+3. **Uses credentials from secrets.env** by sourcing or reference
+4. **Executes the action**
+5. **Reports the result**
+
+This works for ANY provider. If capabilities.yaml says `email.provider: lima-city`, the agent looks up lima-city's email API. If it says `email.provider: resend`, it looks up Resend's API. The playbook doesn't hardcode provider-specific logic — it teaches the agent to figure it out.
+
+### Example: Creating an Email Address on lima-city
+
+```bash
+# Agent reads from capabilities:
+#   email.provider = lima-city
+#   base_url = https://www.lima-city.de/usercp
+
+# Agent sources credentials:
+source ~/.introdote/secrets.env
+
+# Agent looks up current lima-city email API docs, then:
+curl -s -X POST -u "api:$LIMACITY_API_KEY" \
+  "https://www.lima-city.de/usercp/email.json" \
+  -H "Content-Type: application/json" \
+  -d '{"email_address":{"local_part":"hello","domain":"example.de","type":"alias","destinations":["you@example.com"]}}'
+
+# Agent reports: "✓ Created hello@example.de → forwards to your Gmail"
+```
+
+### Example: Creating a DNS Record on lima-city
+
+```bash
+source ~/.introdote/secrets.env
+
+# Agent reads domain_id from capabilities.yaml
+curl -s -X POST -u "api:$LIMACITY_API_KEY" \
+  "https://www.lima-city.de/usercp/domains/$DOMAIN_ID/records.json" \
+  -H "Content-Type: application/json" \
+  -d '{"record":{"name":"subdomain","type":"CNAME","content":"cname.vercel-dns.com","ttl":300}}'
+```
+
+### What If the Agent Doesn't Know the API?
+
+```
+1. Read ~/.introdote/providers/[provider].yaml → api_docs URL
+2. Fetch that URL and read the current documentation
+3. Find the endpoint for the action you need
+4. Construct the API call
+5. Execute it
+
+NEVER guess an endpoint. ALWAYS look it up.
+```
+
+---
+
 ## Credential Collection Protocol
 
 The agent delivers a **full-service experience**. The human should never have to figure out where to go or what to click. The agent opens the pages, explains what to do on each one, and handles everything after the key is pasted.
