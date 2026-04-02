@@ -1,0 +1,149 @@
+{
+  "status": {
+    "installed": true,
+    "oye_dir": "~/.introdote",
+    "files": {
+      "secrets.env": true,
+      "capabilities.yaml": true,
+      "PLAYBOOK.md": true
+    }
+  },
+  "providers": [
+    {
+      "name": "lima-city",
+      "role": "dns, domains, email, hosting, databases, cron",
+      "account": "patrickreinbold",
+      "status": "ok",
+      "validated_at": "2026-04-02T18:30:00Z",
+      "credential_keys": ["LIMACITY_API_KEY"],
+      "domains": [
+        { "name": "blackforest-interiors.de", "id": 58700 },
+        { "name": "patrickreinbold.com", "id": 23806 },
+        { "name": "pwapoint.com", "id": 53164 },
+        { "name": "synapse-agentur.de", "id": 56376 },
+        { "name": "thinks.click", "id": 58308 },
+        { "name": "nano-interior.com", "id": 56589 },
+        { "name": "style-my-space.com", "id": 56590 },
+        { "name": "winteracademy2025.de", "id": 55662 },
+        { "name": "digital-customer-experience-in-banking.de", "id": 55890 }
+      ]
+    },
+    {
+      "name": "Vercel",
+      "role": "deploy",
+      "account": "patrickreinbold-8891",
+      "status": "ok",
+      "credential_keys": []
+    }
+  ],
+  "secrets": {
+    "DNS_PROVIDER": { "exists": true, "redacted": "lima-city" },
+    "LIMACITY_API_KEY": { "exists": true, "redacted": "Cdk...Mb2" },
+    "DEPLOY_PROVIDER": { "exists": true, "redacted": "vercel" },
+    "DOMAIN": { "exists": true, "redacted": "bla...de" },
+    "DEV_DOMAIN": { "exists": true, "redacted": "pat...com" }
+  },
+  "capabilities": {
+    "configured": true,
+    "capabilities": {
+      "deploy": { "provider": "vercel" },
+      "dns": { "provider": "lima-city" },
+      "domain_registration": {
+        "provider": "lima-city",
+        "domains": [
+          { "name": "blackforest-interiors.de", "expires": "2027-04-02", "auto_renew": false, "pointing_at": "vercel" }
+        ]
+      },
+      "database": { "provider": "lima-city" },
+      "email": { "provider": "lima-city" },
+      "hosting": { "provider": "lima-city" },
+      "cron": { "provider": "lima-city" }
+    }
+  },
+  "devDeploys": { "deploys": [] },
+  "launched": [
+    {
+      "name": "Tron Light Cycles",
+      "url": "https://tron-mp-party.st-patrick.partykit.dev",
+      "itch": "https://lamygames.itch.io/tron-multiplayer",
+      "type": "game",
+      "tags": ["multiplayer", "WebXR", "VR", "mobile", "PartyKit", "A-Frame"],
+      "description": "Multiplayer Tron light cycles — browser, mobile, and VR. Solo AI or online with friends."
+    },
+    {
+      "name": "Liquid Mirror",
+      "url": "https://codepen.io/patrickreinbold/pen/pvEVMwq",
+      "type": "creative",
+      "tags": ["WebGL", "GLSL", "webcam", "shaders", "creative coding"],
+      "description": "Webcam turned into a reflective liquid chrome surface with real-time WebGL shaders."
+    },
+    {
+      "name": "Blackforest Interiors",
+      "url": "https://blackforest-interiors.de",
+      "type": "business",
+      "tags": ["Next.js", "i18n", "interior design"],
+      "description": "Interior design office website — bilingual (DE/EN), SEO-optimized."
+    },
+    {
+      "name": "Synapse Agentur",
+      "url": "https://synapse-agentur.de",
+      "type": "business",
+      "tags": ["React", "Vite", "agency", "landing page"],
+      "description": "AI-powered software agency landing page with working contact form."
+    },
+    {
+      "name": "Winter Academy 2025",
+      "url": "https://winteracademy2025.de",
+      "type": "event",
+      "tags": ["event", "education"],
+      "description": "Winter academy event site."
+    },
+    {
+      "name": "Style My Space",
+      "url": "https://style-my-space.com",
+      "type": "business",
+      "tags": ["AI", "interior design"],
+      "description": "AI-powered interior design tool."
+    },
+    {
+      "name": "Introdote Dashboard",
+      "url": "https://introdote.patrickreinbold.com",
+      "type": "tool",
+      "tags": ["React", "Vite", "dashboard"],
+      "description": "This dashboard — your launch control panel."
+    }
+  ],
+  "buried": [
+    { "name": "brain-lab", "framework": "react", "path": "~/code/brain-lab" },
+    { "name": "topdown-ai-game-engine", "framework": "node", "hasBuild": true, "path": "~/code/topdown-ai-game-engine" },
+    { "name": "voxel-terraformer", "framework": "static", "path": "~/Desktop/appaday/voxel-terraformer" },
+    { "name": "zelda-copy", "framework": "node", "path": "~/Desktop/appaday/zelda-copy" },
+    { "name": "polytopia", "framework": "static", "path": "~/Desktop/appaday/polytopia" },
+    { "name": "escape-web", "framework": "static", "path": "~/Desktop/appaday/escape-web" },
+    { "name": "xwing-VR", "framework": "static", "path": "~/Desktop/appaday/xwing-VR" },
+    { "name": "schedula", "framework": "static", "path": "~/Desktop/appaday/schedula" },
+    { "name": "photo-restorer", "framework": "static", "path": "~/Desktop/appaday/photo-restorer" },
+    { "name": "openproject-clone", "framework": "next", "hasBuild": true, "path": "~/code/openproject-clone" },
+    { "name": "startup-directory-mvp", "framework": "node", "path": "~/code/startup-directory-mvp" },
+    { "name": "wardrobe-manager", "framework": "static", "path": "~/Desktop/appaday/wardrobe-manager" }
+  ],
+  "liveSubdomains": [
+    { "name": "boared", "url": "https://boared.patrickreinbold.com" },
+    { "name": "dailymoji", "url": "https://dailymoji.patrickreinbold.com" },
+    { "name": "strategizer", "url": "https://strategizer.patrickreinbold.com" },
+    { "name": "brain-teasers", "url": "https://brain-teasers.patrickreinbold.com" },
+    { "name": "timekeeper", "url": "https://timekeeper.patrickreinbold.com" },
+    { "name": "thinks", "url": "https://thinks.patrickreinbold.com" },
+    { "name": "sex-pistol", "url": "https://sex-pistol.patrickreinbold.com" },
+    { "name": "job-work-dashboard", "url": "https://job-work-dashboard.patrickreinbold.com" },
+    { "name": "appaday", "url": "https://appaday.patrickreinbold.com" },
+    { "name": "resume", "url": "https://resume.patrickreinbold.com" },
+    { "name": "recurrr", "url": "https://recurrr.patrickreinbold.com" },
+    { "name": "formbuilder", "url": "https://formbuilder.patrickreinbold.com" },
+    { "name": "indexcards", "url": "https://indexcards.patrickreinbold.com" },
+    { "name": "vinyls", "url": "https://vinyls.patrickreinbold.com" },
+    { "name": "writing", "url": "https://writing.patrickreinbold.com" },
+    { "name": "pizula", "url": "https://pizula.patrickreinbold.com" }
+  ],
+  "generated_at": "2026-04-02T19:30:00Z"
+}
