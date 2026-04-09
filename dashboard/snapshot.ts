@@ -34,8 +34,25 @@ function parseSecretsEnv(): Record<string, { exists: boolean; redacted: string }
   return result;
 }
 
+// Curated sections (launched / buried / liveSubdomains) live in the existing
+// snapshot.json — they're hand-maintained, not auto-generated. Read the
+// existing file BEFORE building the new one so we preserve them.
+const existingSnapshotPath = path.join(import.meta.dirname, "public", "snapshot.json");
+let existingCurated: { launched?: unknown; buried?: unknown; liveSubdomains?: unknown } = {};
+try {
+  const existing = JSON.parse(fs.readFileSync(existingSnapshotPath, "utf-8"));
+  existingCurated = {
+    launched: existing.launched,
+    buried: existing.buried,
+    liveSubdomains: existing.liveSubdomains,
+  };
+} catch {
+  // first run — no existing snapshot, that's fine
+}
+
 // Build snapshot
 const snapshot = {
+  ...existingCurated,
   status: {
     installed: fs.existsSync(INTRODOTE_DIR),
     oye_dir: INTRODOTE_DIR,

@@ -286,7 +286,7 @@ function App() {
       {liveSubdomains.length > 0 && (
         <>
           <h2 style={{ ...sectionTitle, marginTop: 40 }}>
-            Live on patrickreinbold.com ({liveSubdomains.length})
+            Live Subdomains ({liveSubdomains.length})
           </h2>
           <div style={gridStyle}>
             {liveSubdomains.map((s) => (
