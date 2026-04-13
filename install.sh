@@ -11,11 +11,17 @@ echo ""
 
 # Create directory structure
 mkdir -p "$INTRODOTE_DIR/providers"
+mkdir -p "$INTRODOTE_DIR/playbooks"
+mkdir -p "$INTRODOTE_DIR/data"
 mkdir -p "$INTRODOTE_DIR/keys"
 
-# Copy playbook
+# Copy playbook and sub-playbooks
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cp "$SCRIPT_DIR/PLAYBOOK.md" "$INTRODOTE_DIR/PLAYBOOK.md"
+if [ -d "$SCRIPT_DIR/playbooks" ]; then
+    cp "$SCRIPT_DIR/playbooks/"*.md "$INTRODOTE_DIR/playbooks/"
+    echo "  Synced sub-playbooks"
+fi
 
 # Create secrets.env if it doesn't exist (don't overwrite!)
 if [ ! -f "$INTRODOTE_DIR/secrets.env" ]; then
@@ -54,7 +60,7 @@ if [ -d "$HOME/.claude" ]; then
 
 ## Introdote
 
-When I say "finish", "ship it", "deploy", or "open your eyes":
+When I say "finish", "ship it", "deploy", "introdote", or "open your eyes":
 1. Read ~/.introdote/PLAYBOOK.md and follow its instructions
 2. Scan the current project, check global capabilities, fill gaps, and ship
 

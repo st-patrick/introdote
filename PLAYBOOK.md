@@ -182,6 +182,36 @@ them the next time any file in the project is touched.
 
 ---
 
+## RULE: AUTO-OPEN RESULTS IN BROWSER
+
+```
+Whenever the agent starts a dev server, deploys a site, or produces
+any artifact meant to be viewed in a browser — OPEN IT AUTOMATICALLY.
+Don't paste a URL and wait for the human to click it. Use the OS
+command and move on.
+
+HOW:
+  macOS:   open "http://localhost:4321"
+  Linux:   xdg-open "http://localhost:4321"
+  Windows: start "http://localhost:4321"
+
+APPLIES TO:
+  - Dev servers: after `npm run dev` / `astro dev` / etc., open localhost
+  - Dev deploys: after pushing to a subdomain, open the live URL
+  - Production deploys: after "finish", open the live URL
+  - Generated HTML / screenshots / reports: open the file
+  - Lighthouse audits: open the report HTML
+
+DON'T: "Dev server running at http://localhost:4321"
+DO:    [opens http://localhost:4321 in browser]
+       "Dev server is running — opened it in your browser."
+
+The user should never have to copy-paste a localhost URL from the
+terminal. If it's viewable, open it.
+```
+
+---
+
 ## RULE: REAL CHROME VIA CDP (not headless puppeteer)
 
 ```
@@ -237,8 +267,11 @@ DO:    spawn Chrome with --remote-debugging-port, puppeteer.connect()
 
 ```
 ~/.introdote/                    ← GLOBAL (once per machine, shared by all projects)
+├── PLAYBOOK.md                       ← This file (the agent's brain)
 ├── secrets.env                       ← All API keys (chmod 600, never in git)
 ├── capabilities.yaml                 ← What the agent can do (deploy, email, pay, etc.)
+├── playbooks/                        ← Topical sub-playbooks (see below)
+├── data/                             ← Personal research & working state (see below)
 ├── providers/                        ← Per-provider state
 │   ├── vercel.yaml                   ← Account info, validated at, capabilities
 │   ├── supabase.yaml                 ← Project refs, regions, validated at
@@ -254,6 +287,33 @@ DO:    spawn Chrome with --remote-debugging-port, puppeteer.connect()
 ### Key Insight: Nothing Lives in the Project
 
 Previous versions put a playbook file in the project. That's wrong. The skill is global — it lives in the user's home directory and works across every project. The project just has code. The agent reads this playbook from `~/.introdote/PLAYBOOK.md` and applies it to whatever project it's currently in.
+
+### Sub-Playbooks
+
+This file covers the core deploy lifecycle and rules. Topical workflows that would bloat this document live in `~/.introdote/playbooks/`. Read `playbooks/README.md` for a routing table, but in short:
+
+- **Shipping a site** → `playbooks/small-business-starter.md` (real business) or `playbooks/product-interest-starter.md` (waitlist/idea)
+- **Domain hunting** → `playbooks/domain-hunting.md` (start here), plus `playbooks/domain-search-methodology.md` (bulk search process, TLD tiers)
+- **Registrar comparison** → `playbooks/registrar-api-research.md`
+- **What to work on next** → `playbooks/introdote-roulette.md`
+
+### Personal Data (`~/.introdote/data/`)
+
+Some playbooks reference personal research that accumulates over time. This data lives in `~/.introdote/data/`, not in the repo or in `playbooks/`:
+
+- `data/short-domain-inventory.md` — pre-vetted available domains with ratings (used by `domain-hunting.md` Phase 0)
+- `data/checked-domains-taken.md` — domains already verified as taken/reserved/premium (prevents redundant checking)
+
+Data files are personal state — they're never committed to git, only exist on the user's machine.
+
+### Related Playbook Collections
+
+Introdote is one of several playbook collections on this machine. Agents should be aware of all of them:
+
+- **`~/code/playbooks/`** — General-purpose workflows: backend delivery loops, contrast improvement, design ideation (single-file HTML designs), mobile app design (HTML-first → React Native), HDD cleanup, and the last-mile playbook (the methodology that originally inspired introdote). Introdote lives here as a subfolder.
+- **`~/code/Atlas/`** — Per-project working notes, handoff docs, and design decisions. Has its own agent.
+
+When a task spans multiple concerns (e.g., "design and deploy a new site"), check the relevant collection. The general playbooks have deep workflows for design and iteration; introdote playbooks handle the shipping and infrastructure side.
 
 ### capabilities.yaml
 
@@ -499,7 +559,14 @@ The agent picks the right target based on project type detected in the scan.
 
 ## The Skill: "finish" / "open your eyes"
 
-When the user says **"finish"**, **"ship it"**, **"open your eyes"**, or **"deploy this"**, the agent executes this sequence:
+When the user says **"finish"**, **"ship it"**, **"open your eyes"**, or **"deploy this"**, the agent executes this sequence.
+
+> **Before diving into the phases below**, check if the project matches a sub-playbook:
+> - Launching a small business or service site? → Read `playbooks/small-business-starter.md` first — it has an 8-phase workflow with copy rules, section templates, and handoff files.
+> - Launching a waitlist or product-interest page? → Read `playbooks/product-interest-starter.md` first — it has honesty rules and a stripped-down CTA-first flow.
+> - Need a domain for this project? → Read `playbooks/domain-hunting.md` — it starts with the pre-vetted inventory in `~/.introdote/data/` before generating fresh candidates.
+>
+> The sub-playbooks build ON TOP of these phases, not instead of them.
 
 ### Phase 1: Know What I Can Do (read global state)
 

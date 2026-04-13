@@ -1,6 +1,13 @@
 # Sub-playbook: Domain Hunting
 
 > How to go from "we need a name" to "the domain is registered and pointing at the right folder." Shared by `small-business-starter.md` and `product-interest-starter.md`.
+>
+> Related sub-playbooks:
+> - `domain-search-methodology.md` — the bulk search process, TLD tier list, verification commands, and known traps
+>
+> Personal data (in `~/.introdote/data/`, not in the repo):
+> - `data/short-domain-inventory.md` — pre-vetted available domains with ratings (Phase 0)
+> - `data/checked-domains-taken.md` — domains already verified as taken/reserved/premium
 
 ---
 
@@ -19,6 +26,19 @@ Respect the per-project budget set in the user's capabilities (or ask if unset).
 - **Any TLD over ~€10/yr:** per-domain approval with written justification
 
 A purchase decision is **never automatic**. The agent hunts → shortlists → explains trade-offs → asks. The user picks. No purchases without explicit approval, even if the user previously said "exotic TLDs OK."
+
+---
+
+## Phase 0: Check the short-domain inventory first
+
+Before generating fresh candidates, scan `~/.introdote/data/short-domain-inventory.md` for a vibe match with the current project. This is a standing list of pre-vetted 3–4 letter domains with verified availability as of the date noted in the file.
+
+If one of them fits the project:
+1. **Re-verify availability** (entries may have been registered since last check — use the verification methods documented in the inventory file, not the default `whois` or the DNS-only check below; both have known blind spots for new gTLDs).
+2. If still available, skip straight to **Phase 3** (shortlist + trademark check + user approval). No need for Phase 1's creative generation.
+3. If it's now taken, strike it from the inventory with a dated note and continue to Phase 1.
+
+If nothing in the inventory fits the project's vibe, continue to Phase 1. **Do not force a match just because a name is cheap** — a wrong-vibe cheap name is a bad name.
 
 ---
 
